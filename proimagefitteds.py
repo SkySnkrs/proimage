@@ -203,8 +203,14 @@ def chooserate(headers, csrf_token, cookies, xsrf, price, seller_id, rate_name):
     response = requests.post(url, json=payload, headers=headers, cookies=cookies)
 
 
+cardnumber = '4403933811892576'
+expdatemonth = '10'
+expdate1 = '27'
+expdateyear = '20'+expdate1
+expdate = expdatemonth+expdateyear
 
-def card(csrf_token, cookies):
+cvv = '204'
+def card(csrf_token, cookies, cardnumber, cvv, expdate, expdatemonth, expdateyear):
     url = "https://api2.authorize.net/xml/v1/request.api"
 
     payload = {"securePaymentContainerRequest": {
@@ -216,9 +222,9 @@ def card(csrf_token, cookies):
             "type": "TOKEN",
             "id": "f7755c93-00d6-bd58-b226-8e37bddb0ebc",
             "token": {
-                "cardNumber": "4170460122610282",
-                "expirationDate": "062025",
-                "cardCode": "947"
+                "cardNumber": cardnumber,
+                "expirationDate": expdate,
+                "cardCode": cvv
             }
         }
     }}
@@ -236,10 +242,13 @@ def card(csrf_token, cookies):
     data = json.loads(text)
 
     cardtoken = data['opaqueData']['dataValue']
-    
+
+    key = str(cardnumber)[-4:]
+    key1 = str(cardnumber)[+4:]
+  
     url = "https://proimagesports.com/checkout/sendtoken"
 
-    payload = "_token=" + csrf_token + "&response%5BopaqueData%5D%5BdataDescriptor%5D=COMMON.ACCEPT.INAPP.PAYMENT&response%5BopaqueData%5D%5BdataValue%5D="+ cardtoken +"&response%5Bmessages%5D%5BresultCode%5D=Ok&response%5Bmessages%5D%5Bmessage%5D%5B0%5D%5Bcode%5D=I_WC_01&response%5Bmessages%5D%5Bmessage%5D%5B0%5D%5Btext%5D=Successful.&response%5BencryptedCardData%5D%5Bbin%5D=4170%2B9&response%5BencryptedCardData%5D%5BexpDate%5D=06%2F2025&response%5BencryptedCardData%5D%5BcardNumber%5D=XXXXXXXXXXXX0282&result=true&cardId="
+    payload = "_token=" + csrf_token + "&response%5BopaqueData%5D%5BdataDescriptor%5D=COMMON.ACCEPT.INAPP.PAYMENT&response%5BopaqueData%5D%5BdataValue%5D="+ cardtoken +"&response%5Bmessages%5D%5BresultCode%5D=Ok&response%5Bmessages%5D%5Bmessage%5D%5B0%5D%5Bcode%5D=I_WC_01&response%5Bmessages%5D%5Bmessage%5D%5B0%5D%5Btext%5D=Successful.&response%5BencryptedCardData%5D%5Bbin%5D="+key1+"%2B9&response%5BencryptedCardData%5D%5BexpDate%5D="+expdatemonth+"%2F"+expdateyear+"&response%5BencryptedCardData%5D%5BcardNumber%5D=XXXXXXXXXXXX"+key+"&result=true&cardId="
     headers = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
         "x-csrf-token": csrf_token,
@@ -307,7 +316,21 @@ def saveorder(headers, csrf_token, cookies, xsrf):
     response = requests.post(url, headers=headers, json=payload, cookies=cookies)
     
     print(response.status_code)
+  
+    url = "https://www.facebook.com/tr"
     
+    querystring = {"id":"274490659742640","ev":"SubscribedButtonClick","dl":"https://proimagesports.com/checkout/onepage","rl":"https://proimagesports.com/checkout/onepage","if":"true","ts":"1673557359176","cd\\[buttonFeatures\\]":"{\"classList\":\"btn common-btn mt-0 mb-5\",\"destination\":\"\",\"id\":\"checkout-place-order-button\",\"imageUrl\":\"linear-gradient(90deg, rgb(0, 63, 236) 0px, rgb(0, 126, 236))\",\"innerText\":\"PLACE ORDER\",\"numChildButtons\":0,\"tag\":\"button\",\"type\":\"button\",\"name\":\"\",\"value\":\"\"}","cd\\[buttonText\\]":"PLACE ORDER","cd\\[formFeatures\\]":"[]","cd\\[pageFeatures\\]":"{\"title\":\"    Checkout\\n\"}","cd\\[parameters\\]":"[]","sw":"1440","sh":"900","v":"2.9.92","r":"stable","ec":"7","o":"30","fbp":"fb.1.1673556900310.1292209738","it":"1673556991788","coo":"true","es":"automatic","tm":"3","rqm":"GET"}
+    
+    
+    headers = {
+        "accept": "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.76"
+    }
+    
+    response = requests.get(url, headers=headers, params=querystring)
+    
+    print(response.text)
+      
 
 def checkoutsuccess(headers, csrf_token, cookies, xsrf):
     url = 'https://proimagesports.com/checkout/success'
@@ -330,7 +353,7 @@ guestcheckout(headers, csrf_token, cookies)
 headers = shipping(headers, csrf_token, cookies, xsrf)
 price, seller_id, rate_name = shippingrate(headers, csrf_token, cookies, xsrf)
 chooserate(headers, csrf_token, cookies, xsrf, price, seller_id, rate_name) 
-cookies = card(csrf_token, cookies)
+cookies = card(csrf_token, cookies, cardnumber, cvv, expdate, expdatemonth, expdateyear)
 checkout2(headers, csrf_token, cookies, xsrf)
 finalpage(headers, csrf_token, cookies, xsrf)
 saveorder(headers, csrf_token, cookies, xsrf)
