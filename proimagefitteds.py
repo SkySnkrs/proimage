@@ -82,12 +82,17 @@ def getcookies():
         else:
             time.sleep(1)
             print_with_color('Site Down... Retrying', Fore.RED, Style.BRIGHT)
-    return headers, cookies, xsrf, session
-headers, cookies, xsrf, session = getcookies()
+    return xsrf, session
+xsrf, session = getcookies()
 
 def checkstock(session):
     while True:
             url = 'https://proimagesports.com/check/quantity/64547'
+            
+            headers = {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+            }
             
             response = session.get(url, headers=headers)
             
@@ -101,8 +106,8 @@ def checkstock(session):
                 print('In-Stock:', end=' ')
                 print_with_color(str(response_data['qty']), Fore.GREEN, Style.BRIGHT)
                 break;
-    return session
-session = checkstock(session)
+    return session, headers
+session, headers = checkstock(session)
 
 def addtocart(headers, session):
     #Add to Cart, Bypass Cart Goes To Checkout
@@ -114,22 +119,15 @@ def addtocart(headers, session):
         response = session.get(url, headers=headers, params=querystring)
         
         if response.status_code == 200:
+            
+            #cookies
             html_doc = response.text
-
-            # Parse the HTML document using Beautiful Soup
             soup = BeautifulSoup(html_doc, 'html.parser')
-
-            # Find the 'csrf-token' meta tag
             csrf_meta_tag = soup.find('meta', {'name': 'csrf-token'})
-            
-            # Extract the value of the 'content' attribute from the meta tag
             csrf_token = csrf_meta_tag['content']
-
-            stored_cookiesxsrf = response.cookies['XSRF-TOKEN']
-            prosession = response.cookies['proimagesports_session']
-            
             itemname_divclass = soup.find('div', {'class': 'item-name'})
             
+
             if itemname_divclass == '':
                 print_with_color('Cart Failed, Retrying...', Fore.RED, Style.BRIGHT)
                 time.sleep(1)
@@ -140,8 +138,8 @@ def addtocart(headers, session):
         else:
             print('Carting Failed, Retrying....', Fore.RED, Style.BRIGHT)
         
-    return csrf_token, headers, stored_cookiesxsrf, prosession, session
-csrf_token, headers, stored_cookiesxsrf, prosession, session = addtocart(headers, session)
+    return session, csrf_token
+session, csrf_token = addtocart(headers, session)
 
 def guestcheckout(headers, csrf_token, session):
     while True:
@@ -152,12 +150,6 @@ def guestcheckout(headers, csrf_token, session):
             '_token':csrf_token,
             'email':'tristanm10@outlook.com',
             'account':'account_no'
-        }
-
-        headers = {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-        "x-csrf-token": csrf_token,
-        "x-requested-with": "XMLHttpRequest"
         }
 
         response = session.post(url, data=payload, headers=headers)
@@ -171,7 +163,7 @@ def guestcheckout(headers, csrf_token, session):
     return session
 session = guestcheckout(headers, csrf_token, session)
 
-def shipping(headers, csrf_token, xsrf, firstname, lastname, address, address2, phone, city, state, country, postcode, email, session):
+def shipping(headers, csrf_token, firstname, lastname, address, address2, phone, city, state, country, postcode, email, session):
     while True:
         url = 'https://proimagesports.com/checkout/save-address'
         
@@ -220,17 +212,15 @@ def shipping(headers, csrf_token, xsrf, firstname, lastname, address, address2, 
             print_with_color('Failed To Submit Shipping, Retrying...', Fore.RED, Style.BRIGHT)
             time.sleep(1)
     return headers, session
-headers, session = shipping(headers, csrf_token, xsrf, firstname, lastname, address, address2, phone, city, state, country, postcode, email, session)
+headers, session = shipping(headers, csrf_token, firstname, lastname, address, address2, phone, city, state, country, postcode, email, session)
 
-def shippingrate(headers, csrf_token, xsrf, session):
+def shippingrate(headers, csrf_token, session):
     while True:
         url = 'https://proimagesports.com/checkout/shippingrate'
         
         headers = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
         "x-csrf-token": csrf_token,
-        "x-requested-with": "XMLHttpRequest",
-        "x-xsrf-token": xsrf
         }
         
         response = session.get(url, headers=headers)
@@ -261,9 +251,9 @@ def shippingrate(headers, csrf_token, xsrf, session):
             print_with_color('Failed Getting Shipping, Retrying...', Fore.RED, Style.BRIGHT)
             time.sleep(1)
     return price, seller_id, rate_name, session
-price, seller_id, rate_name, session = shippingrate(headers, csrf_token, xsrf, session)
+price, seller_id, rate_name, session = shippingrate(headers, csrf_token, session)
 
-def chooserate(headers, csrf_token, xsrf, price, seller_id, rate_name, session):
+def chooserate(headers, csrf_token, price, seller_id, rate_name, session):
     while True:
         url = "https://proimagesports.com/checkout/save-shipping"
 
@@ -274,8 +264,6 @@ def chooserate(headers, csrf_token, xsrf, price, seller_id, rate_name, session):
         headers = {
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
             "x-csrf-token": csrf_token,
-            "x-requested-with": "XMLHttpRequest",
-            "x-xsrf-token": xsrf
         }
 
         response = session.post(url, json=payload, headers=headers)
@@ -287,9 +275,9 @@ def chooserate(headers, csrf_token, xsrf, price, seller_id, rate_name, session):
             print_with_color('Failed To Submit Rate, Retrying...', Fore.RED, Style.BRIGHT)
             time.sleep(1)
     return session
-session = chooserate(headers, csrf_token, xsrf, price, seller_id, rate_name, session)
+session = chooserate(headers, csrf_token, price, seller_id, rate_name, session)
 
-def card(csrf_token, cardnumber, cvv, expdate, expdatemonth, expdateyear, new_id, session):
+def card(cardnumber, cvv, expdate, new_id, session):
     while True:
         url = "https://api2.authorize.net/xml/v1/request.api"
 
@@ -328,8 +316,7 @@ def card(csrf_token, cardnumber, cvv, expdate, expdatemonth, expdateyear, new_id
             print_with_color('Failed To Authorize Payment, Retrying...', Fore.RED, Style.BRIGHT)
             time.sleep(1)
     return key, key1, cardtoken, session
-
-key, key1, cardtoken, session = card(csrf_token, cardnumber, cvv, expdate, expdatemonth, expdateyear, new_id, session)
+key, key1, cardtoken, session = card(cardnumber, cvv, expdate, new_id, session)
 
 def card2(csrf_token, expdatemonth, expdateyear, cardtoken, session):
     
@@ -347,7 +334,6 @@ def card2(csrf_token, expdatemonth, expdateyear, cardtoken, session):
         
         if response.status_code == 200:
             print_with_color('Recieved Payment Token', Fore.GREEN, Style.BRIGHT)
-            cookies = response.cookies
             break;
         else:
             print_with_color('Failed To Process Payment', Fore.RED, Style.BRIGHT)
@@ -370,8 +356,6 @@ def checkout2(headers, csrf_token, xsrf, session):
         headers = {
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
                 "x-csrf-token": csrf_token,
-                "x-requested-with": "XMLHttpRequest",
-                "x-xsrf-token": xsrf
             }
             
         response = session.post(url, headers=headers, json=payload)
@@ -385,7 +369,7 @@ def checkout2(headers, csrf_token, xsrf, session):
     return session
 session = checkout2(headers, csrf_token, xsrf, session)
 
-def saveorder(headers, csrf_token, xsrf, session):
+def saveorder(headers, csrf_token, session):
     while True:
         url = 'https://proimagesports.com/checkout/save-order'
         
@@ -395,9 +379,6 @@ def saveorder(headers, csrf_token, xsrf, session):
         headers = {
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
             "x-csrf-token": csrf_token,
-            "x-requested-with": "XMLHttpRequest",
-            "x-xsrf-token": xsrf,
-            'dnt': '1'
         }
         
         response = session.post(url, headers=headers, json=payload)
@@ -409,17 +390,15 @@ def saveorder(headers, csrf_token, xsrf, session):
             print_with_color('Failed To Process Order, Retrying...', Fore.RED, Style.BRIGHT)
             time.sleep(1)
     return session 
-session = saveorder(headers, csrf_token, xsrf, session)    
+session = saveorder(headers, csrf_token, session)    
 
 def charge(session):
     while True:
         url = "https://proimagesports.com/checkout/create/charge"
 
         headers = {
-            "authority": "proimagesports.com",
+            "cookie":"proimage_session=eyJpdiI6IjdHVnZSQUVNRU5qcGlQSk0zclJxS2c9PSIsInZhbHVlIjoiMjRZcHFcL0oyZ3BsSXlcL1pISzhtbktwZ3dlZDZEMmZGbWZHSklvbmxYMlpETHVuU2M2eWFxMFJ0aFRuY1UxVGNiIiwibWFjIjoiYTZiZTk0MTk5NDE0Y2E1MDNhYWZmODdiYWRmZjdmZmUyOGY0ZDE5Zjg5ZmYyOWVmNGZkNjM3ZDM2MmFjZDczZCJ9",
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-            "accept-language": "en-US,en;q=0.9",
-            "referer": "https://proimagesports.com/checkout/onepage",
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
         }
 
@@ -433,30 +412,3 @@ def charge(session):
     return session 
 session = charge(session)
 
-def checkoutsuccess(headers, session):
-    url = 'https://proimagesports.com/checkout/success'
-    
-    headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-    }
-    
-    response = session.get(url, headers=headers)
-    print(response.text)
-    soup = BeautifulSoup(response.content, 'html.parser')
-
-    # find the h1 tag with the text "Congrats!"
-    congrats_header = soup.find('h1', text='Congrats!')
-
-    # check if the header was found
-    if congrats_header:
-        print("ORDER SUCCESSFUL!", Fore.GREEN, Style.BRIGHT)
-    else:
-        print_with_color("ORDER FAILED.", Fore.RED, Style.BRIGHT)
-        time.sleep(2)
-        charge(headers, csrf_token, xsrf, stored_cookiesxsrf, session)
-        
-    order_number = soup.select_one('h4:-soup-contains("Order #")')
-    if order_number:
-        print(f"ORDER NUMBER: {order_number.text}")
-checkoutsuccess(headers, session)
